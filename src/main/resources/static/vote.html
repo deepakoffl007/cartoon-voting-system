@@ -171,7 +171,7 @@ async function viewResults() {
     if (data.status === "ok") {
       msg.textContent = "📩 OTPs sent to admins. Redirecting to verification...";
       msg.style.color = "green";
-      setTimeout(() => window.location.href = "index.html", 1200);
+      setTimeout(() => window.location.href = "admin-otp.html", 1200);
     } else {
       msg.textContent = data.message || "Failed to send OTP to admins.";
       msg.style.color = "red";
