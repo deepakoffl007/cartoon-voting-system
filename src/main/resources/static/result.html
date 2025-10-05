@@ -1,57 +1,163 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Voting Results</title>
-<link rel="icon" href="result.jpg">
-<style>
-  body { font-family: Inter; background: #eef2f3; text-align: center; padding: 40px; }
-  .card { background: white; display:inline-block; padding: 20px 40px; border-radius: 12px; box-shadow:0 6px 20px rgba(0,0,0,0.1); }
-  button { margin: 10px; padding:10px 20px; border:none; border-radius:8px; cursor:pointer; color:white; }
-  #startBtn { background:#27ae60; } #stopBtn { background:#c0392b; }
-</style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Voting Results</title>
+  <link rel="icon" href="result.jpg">
+  <style>
+    body {
+      font-family: Inter, Arial;
+      background: linear-gradient(135deg, #00c6ff, #0072ff);
+      color: #333;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+      padding: 32px;
+      width: 380px;
+      text-align: center;
+    }
+    h2 { margin-bottom: 12px; color: #0072ff; }
+    .bar-container {
+      width: 100%;
+      background-color: #f1f1f1;
+      border-radius: 25px;
+      margin: 16px 0;
+      overflow: hidden;
+    }
+    .bar {
+      height: 25px;
+      border-radius: 25px;
+      text-align: right;
+      color: white;
+      line-height: 25px;
+      padding-right: 10px;
+      transition: width 0.8s ease-in-out;
+    }
+    .pokemon { background-color: #ffcc00; color: #000; }
+    .doraemon { background-color: #2196F3; }
+    .winner {
+      font-size: 18px;
+      margin-top: 20px;
+      font-weight: bold;
+      color: green;
+    }
+    button {
+      margin-top: 20px;
+      background: #0072ff;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 15px;
+    }
+    button:hover { background: #005fcc; }
+    #refresh {
+      margin-top: 10px;
+      background: #28a745;
+    }
+    #refresh:hover { background: #218838; }
+    #timer {
+      font-size: 13px;
+      color: #444;
+      margin-top: 5px;
+    }
+  </style>
 </head>
 <body>
   <div class="card">
-    <h2>Voting Results</h2>
-    <div id="results"></div>
-    <button id="startBtn" onclick="startVoting()">Start Voting</button>
-    <button id="stopBtn" onclick="stopVoting()">Stop Voting</button>
+    <h2>📊 Election Results</h2>
+    <p id="summary">Loading results...</p>
+
+    <div>
+      <p><b>POKEMON</b></p>
+      <div class="bar-container">
+        <div id="pokemonBar" class="bar pokemon" style="width:0%">0%</div>
+      </div>
+
+      <p><b>DORAEMON</b></p>
+      <div class="bar-container">
+        <div id="doraemonBar" class="bar doraemon" style="width:0%">0%</div>
+      </div>
+    </div>
+
+    <div class="winner" id="winner"></div>
+    <button onclick="logout()">Logout</button>
+    <button id="refresh" onclick="manualRefresh()">🔄 Refresh Now</button>
+    <div id="timer"></div>
   </div>
 
-<script>
-const backend = "https://cartoon-voting-system.onrender.com";
-const token = localStorage.getItem('token');
+  <script>
+    const backendBase = "https://cartoon-voting-system.onrender.com";
+    let countdown = 30;
+    let intervalId;
 
-async function loadResults(){
-  const res = await fetch(`${backend}/auth/results?token=${token}`);
-  const data = await res.json();
-  if(data.status==="ok"){
-    document.getElementById('results').innerHTML = `
-      <p><b>POKEMON:</b> ${data.POKEMON} votes<br>
-      <b>DORAEMON:</b> ${data.DORAEMON} votes<br>
-      <b>Total:</b> ${data.total}<br>
-      <b>Winner:</b> ${data.winner}</p>
-      <p><b>Voting Open:</b> ${data.votingOpen}</p>`;
-  } else {
-    document.getElementById('results').innerText = data.message;
-  }
-}
+    async function loadResults() {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('You must log in as admin.');
+        location.href = 'index.html';
+        return;
+      }
 
-async function startVoting(){
-  const res = await fetch(`${backend}/auth/start-voting?token=${token}`, {method:"POST"});
-  const data = await res.json();
-  alert(data.message); loadResults();
-}
+      try {
+        const res = await fetch(`${backendBase}/auth/results?token=${encodeURIComponent(token)}`);
+        const data = await res.json();
 
-async function stopVoting(){
-  const res = await fetch(`${backend}/auth/stop-voting?token=${token}`, {method:"POST"});
-  const data = await res.json();
-  alert(data.message); loadResults();
-}
+        if (data.status !== 'ok') {
+          document.getElementById('summary').innerText = data.message;
+          return;
+        }
 
-loadResults();
-</script>
+        document.getElementById('summary').innerText =
+          `Total Votes: ${data.total} (Pokémon: ${data.POKEMON}, Doraemon: ${data.DORAEMON})`;
+
+        const pokemonPercent = data.percentages.POKEMON;
+        const doraemonPercent = data.percentages.DORAEMON;
+
+        document.getElementById('pokemonBar').style.width = pokemonPercent + '%';
+        document.getElementById('pokemonBar').innerText = pokemonPercent + '%';
+        document.getElementById('doraemonBar').style.width = doraemonPercent + '%';
+        document.getElementById('doraemonBar').innerText = doraemonPercent + '%';
+
+        document.getElementById('winner').innerText = `🏆 Winner: ${data.winner}`;
+      } catch (e) {
+        document.getElementById('summary').innerText = 'Error: ' + e.message;
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('isAdmin');
+      location.href = 'index.html';
+    }
+
+    function manualRefresh() {
+      countdown = 30;
+      loadResults();
+    }
+
+    function startAutoRefresh() {
+      loadResults();
+      intervalId = setInterval(() => {
+        countdown--;
+        document.getElementById('timer').innerText = `Auto-refresh in ${countdown}s`;
+        if (countdown <= 0) {
+          countdown = 30;
+          loadResults();
+        }
+      }, 1000);
+    }
+
+    document.addEventListener('DOMContentLoaded', startAutoRefresh);
+  </script>
 </body>
 </html>

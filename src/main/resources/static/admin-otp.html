@@ -1,46 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Admin OTP</title>
-<link rel="icon" href="admin.jpg">
-<style>
-  body{font-family:Inter,Arial;background:linear-gradient(135deg,#f6d365,#fda085);
-  height:100vh;display:flex;align-items:center;justify-content:center;margin:0;}
-  .card{background:#fff;padding:28px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.12);
-  width:360px;text-align:center;}
-  input,button{width:100%;padding:10px;margin-top:10px;border-radius:8px;border:1px solid #ddd;font-size:15px;}
-  button{background:#e67e22;color:white;border:none;cursor:pointer;}
-</style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Admin OTP Verification</title>
+  <link rel="icon" href="admin.jpg">
+  <style>
+    body {
+      font-family: Inter, Arial;
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #f6d365, #fda085);
+    }
+    .card {
+      background: #fff;
+      padding: 28px;
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+      width: 360px;
+      text-align: center;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      font-size: 15px;
+    }
+    button {
+      cursor: pointer;
+      background: #e67e22;
+      color: #fff;
+      border: none;
+      font-weight: bold;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .muted {
+      font-size: 13px;
+      color: #666;
+      margin-top: 8px;
+    }
+  </style>
 </head>
 <body>
-<div class="card">
-  <h2>Admin OTP Verification</h2>
-  <input id="otp" placeholder="Enter OTP" />
-  <button onclick="verifyAdmin()">Verify</button>
-  <div id="info"></div>
-</div>
+  <div class="card">
+    <h2>Admin OTP Verification</h2>
+    <p>OTP has been sent to all admin emails. Enter OTP below:</p>
+    <input id="otp" placeholder="Enter OTP" />
+    <button id="verifyBtn" onclick="verifyAdminOtp()">Verify OTP</button>
+    <div id="info" class="muted"></div>
+  </div>
 
-<script>
-const backend = "https://cartoon-voting-system.onrender.com";
-const adminEmails = ["de0049@srmist.edu.in","aa0021@srmist.edu.in","ls9964@srmist.edu.in","hm1023@srmist.edu.in"];
+  <script>
+    const backendBase = "https://cartoon-voting-system.onrender.com";
+    const adminEmails = [
+      "de0049@srmist.edu.in",
+      "aa0021@srmist.edu.in",
+      "ls9964@srmist.edu.in",
+      "hm1023@srmist.edu.in"
+    ];
 
-async function verifyAdmin(){
-  const otp = document.getElementById("otp").value.trim();
-  const info = document.getElementById("info");
-  for(const email of adminEmails){
-    const res = await fetch(`${backend}/auth/verify-otp?email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otp)}`, {method:"POST"});
-    const data = await res.json();
-    if(data.status==="ok" && data.isAdmin){
-      localStorage.setItem("token", data.token);
-      info.innerText="Verified. Redirecting...";
-      setTimeout(()=>location.href="result.html",800);
-      return;
+    async function verifyAdminOtp() {
+      const otp = document.getElementById('otp').value.trim();
+      const info = document.getElementById('info');
+      const btn = document.getElementById('verifyBtn');
+
+      if (!otp) {
+        info.innerText = 'Enter OTP';
+        info.style.color = 'red';
+        return;
+      }
+
+      btn.disabled = true;
+      info.innerText = 'Verifying OTP...';
+      info.style.color = 'black';
+
+      try {
+        for (const email of adminEmails) {
+          const res = await fetch(`${backendBase}/auth/verify-otp?email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otp)}`, {
+            method: 'POST'
+          });
+          const data = await res.json();
+
+          if (data.status === 'ok' && data.isAdmin) {
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('isAdmin', 'true');
+            info.innerText = '✅ OTP verified. Redirecting to results...';
+            info.style.color = 'green';
+            setTimeout(() => location.href = 'result.html', 1000);
+            return;
+          }
+        }
+        info.innerText = '❌ Invalid OTP for admin addresses.';
+        info.style.color = 'red';
+      } catch (e) {
+        info.innerText = 'Error: ' + e.message;
+        info.style.color = 'red';
+      } finally {
+        btn.disabled = false;
+      }
     }
-  }
-  info.innerText="Invalid admin OTP.";
-}
-</script>
+  </script>
 </body>
 </html>

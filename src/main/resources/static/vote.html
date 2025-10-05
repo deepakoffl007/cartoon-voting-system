@@ -1,57 +1,188 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Vote</title>
-<link rel="icon" href="vote.jpg">
-<style>
-  body { background: #f0f0f0; font-family: Inter; margin: 0; }
-  .container { max-width: 800px; margin: 40px auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align:center; }
-  img { width: 100%; border-radius: 10px; }
-  button { background: #1e90ff; color: white; border: none; border-radius: 6px; padding: 10px 20px; cursor:pointer; }
-  .message { margin-top:10px; font-weight:500; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CARTOON VOTE</title>
+  <link rel="icon" href="vote.jpg">
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Open Sans', sans-serif;
+      background: linear-gradient(135deg,#a18cd1,#fbc2eb);
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      max-width: 800px;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg,#7b2ff7,#f107a3);
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit,minmax(300px,1fr));
+      gap: 20px;
+      padding: 20px;
+    }
+    .card {
+      border: 1px solid #eee;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      transition: transform .3s;
+    }
+    .card:hover { transform: translateY(-5px); }
+    .card img {
+      width: 100%;
+      height: 240px;
+      object-fit: cover;
+    }
+    .card h3 { margin: 12px 0 4px; text-align: center; font-size: 22px; }
+    .card p { text-align: center; color: #555; margin: 0 0 16px; padding: 0 10px; }
+    .vote-btn {
+      display: block;
+      margin: 0 auto 20px;
+      background: #7b2ff7;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .vote-btn:hover { background: #611cd9; }
+    .footer {
+      border-top: 1px solid #eee;
+      text-align: center;
+      padding: 20px;
+    }
+    #viewResultsBtn {
+      background: #333;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #viewResultsBtn:hover { background: #000; }
+    #voteMessage {
+      margin-top: 10px;
+      color: #333;
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
+
 <div class="container">
-  <h1>Vote for Your Favorite Cartoon</h1>
-  <div style="display:flex;gap:20px;justify-content:center;">
-    <div><img src="pokemon.jpeg" alt="Pokemon"><br><button onclick="vote('POKEMON')">Vote Pokemon</button></div>
-    <div><img src="doreamon.jpeg" alt="Doraemon"><br><button onclick="vote('DORAEMON')">Vote Doraemon</button></div>
+  <div class="header">
+    <h1>🗳️ Cartoon Election</h1>
+    <p>Vote for your favourite cartoon!</p>
   </div>
-  <br>
-  <button onclick="sendAdminOtp()">View Results (Admins only)</button>
-  <div id="msg" class="message"></div>
+
+  <div class="grid">
+    <div class="card">
+      <img src="pokemon.jpeg" alt="Pokemon">
+      <h3>POKEMON</h3>
+      <p>Every challenge along the way, with courage we will face!</p>
+      <button class="vote-btn" onclick="vote('POKEMON')">Vote for Pokemon</button>
+    </div>
+
+    <div class="card">
+      <img src="doreamon.jpeg" alt="Doraemon">
+      <h3>DORAEMON</h3>
+      <p>The most important thing is to enjoy your life and be happy!</p>
+      <button class="vote-btn" onclick="vote('DORAEMON')">Vote for Doraemon</button>
+    </div>
+  </div>
+
+  <div class="footer">
+    <button id="viewResultsBtn" onclick="viewResults()">📊 View Results</button>
+    <p id="voteMessage"></p>
+  </div>
 </div>
 
 <script>
-const backend = "https://cartoon-voting-system.onrender.com";
-const token = localStorage.getItem('token');
+const backendBase = "https://cartoon-voting-system.onrender.com";
 
-async function vote(candidate){
-  const msg = document.getElementById('msg');
-  msg.innerText = "Submitting...";
+async function vote(candidate) {
+  const token = localStorage.getItem("token");
+  const msg = document.getElementById("voteMessage");
+
+  if (!token) {
+    msg.textContent = "Please log in first.";
+    msg.style.color = "red";
+    setTimeout(() => window.location.href = "index.html", 1200);
+    return;
+  }
+
+  msg.textContent = "Submitting your vote...";
+  msg.style.color = "black";
+
   try {
-    const res = await fetch(`${backend}/auth/vote?token=${token}&candidate=${candidate}`, { method:"POST" });
-    const data = await res.json();
-    msg.innerText = data.message;
-    msg.style.color = data.status === "ok" ? "green" : "red";
-  } catch(e){ msg.innerText='Error: '+e.message; }
+    const response = await fetch(`${backendBase}/auth/vote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ token, candidate }),
+    });
+
+    const data = await response.json();
+
+    if (data.status === "ok") {
+      msg.textContent = `✅ ${data.message}. Redirecting...`;
+      msg.style.color = "green";
+      localStorage.removeItem("token");
+      setTimeout(() => window.location.href = "index.html", 1500);
+    } else {
+      msg.textContent = `⚠️ ${data.message}`;
+      msg.style.color = "red";
+    }
+  } catch (err) {
+    console.error("Vote error:", err);
+    msg.textContent = "❌ Failed to submit vote.";
+    msg.style.color = "red";
+  }
 }
 
-async function sendAdminOtp(){
-  const msg = document.getElementById('msg');
-  msg.innerText = "Requesting Admin OTPs...";
+async function viewResults() {
+  const msg = document.getElementById("voteMessage");
+  msg.textContent = "Requesting admin OTPs...";
+  msg.style.color = "black";
+
   try {
-    const res = await fetch(`${backend}/auth/send-admin-otp`, { method:"POST" });
-    const data = await res.json();
-    if(data.status === "ok") {
-      msg.innerText = "OTP sent to admins. Redirecting...";
-      setTimeout(()=> location.href='admin-otp.html', 800);
-    } else msg.innerText = data.message;
-  } catch(e){ msg.innerText='Error: '+e.message; }
+    const response = await fetch(`${backendBase}/auth/send-admin-otp`, { method: "POST" });
+    const data = await response.json();
+
+    if (data.status === "ok") {
+      msg.textContent = "📩 OTPs sent to admins. Redirecting to verification...";
+      msg.style.color = "green";
+      setTimeout(() => window.location.href = "index.html", 1200);
+    } else {
+      msg.textContent = data.message || "Failed to send OTP to admins.";
+      msg.style.color = "red";
+    }
+  } catch (err) {
+    console.error("Admin OTP error:", err);
+    msg.textContent = "Error sending OTP to admins.";
+    msg.style.color = "red";
+  }
 }
 </script>
+
 </body>
 </html>
