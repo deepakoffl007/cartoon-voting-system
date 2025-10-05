@@ -39,7 +39,8 @@ public class OtpVerificationApp {
     private final ConcurrentHashMap<String, Integer> votes = new ConcurrentHashMap<>();
     private final Set<String> votedEmails = ConcurrentHashMap.newKeySet();
 
-    // ✅ Admin Emails
+    private volatile boolean votingOpen = false; // ✅ controlled by admin
+
     private static final List<String> ADMIN_EMAILS = Arrays.asList(
             "de0049@srmist.edu.in",
             "aa0021@srmist.edu.in",
@@ -47,8 +48,7 @@ public class OtpVerificationApp {
             "hm1023@srmist.edu.in"
     );
 
-    private final long TOKEN_EXPIRY = 10 * 60; // seconds
-    private boolean votingOpen = false; // 🟢 Admin-controlled flag
+    private final long TOKEN_EXPIRY = 10 * 60; // 10 min
 
     public static void main(String[] args) {
         SpringApplication.run(OtpVerificationApp.class, args);
@@ -60,7 +60,6 @@ public class OtpVerificationApp {
         votes.putIfAbsent("DORAEMON", 0);
     }
 
-    // ✅ Load allowed emails from Excel
     private void loadAllowedEmails() {
         try (FileInputStream fis = new FileInputStream("allowed_emails.xlsx");
              Workbook workbook = new XSSFWorkbook(fis)) {
@@ -78,33 +77,28 @@ public class OtpVerificationApp {
         }
     }
 
-    // ✅ OTP Generator
     private String generateOtp() {
         return String.valueOf(new Random().nextInt(900000) + 100000);
     }
 
-    // ✅ Send OTP (for users and admins)
     @PostMapping("/send-otp")
     public Map<String, Object> sendOtp(@RequestParam String email) {
         Map<String, Object> res = new HashMap<>();
         try {
             if (votedEmails.contains(email) && !ADMIN_EMAILS.contains(email)) {
                 res.put("status", "error");
-                res.put("message", "You have already voted. You cannot log in again.");
+                res.put("message", "You have already voted.");
                 return res;
             }
             if (!allowedEmails.contains(email) && !ADMIN_EMAILS.contains(email)) {
                 res.put("status", "error");
-                res.put("message", "Email not allowed.");
+                res.put("message", "Email not allowed");
                 return res;
             }
-
             String otp = generateOtp();
             otpStorage.put(email, otp);
-
             sendEmail(email, "OTP for Voting",
-                    "<p>Your OTP for Cartoon Voting is <b>" + otp + "</b> (valid 10 minutes)</p>");
-
+                    "<p>Your OTP for CR Voting is <b>" + otp + "</b> (valid 10 minutes)</p>");
             res.put("status", "ok");
             res.put("message", "OTP sent to " + email);
         } catch (Exception ex) {
@@ -114,7 +108,6 @@ public class OtpVerificationApp {
         return res;
     }
 
-    // ✅ Verify OTP
     @PostMapping("/verify-otp")
     public Map<String, Object> verifyOtp(@RequestParam String email, @RequestParam String otp) {
         Map<String, Object> res = new HashMap<>();
@@ -129,12 +122,83 @@ public class OtpVerificationApp {
             res.put("isAdmin", isAdmin);
         } else {
             res.put("status", "error");
-            res.put("message", "Invalid OTP.");
+            res.put("message", "Invalid OTP");
         }
         return res;
     }
 
-    // ✅ Admin-only: Start Voting
+    @PostMapping("/vote")
+    public Map<String, Object> vote(@RequestParam String token, @RequestParam String candidate) {
+        Map<String, Object> res = new HashMap<>();
+        if (!votingOpen) {
+            res.put("status", "error");
+            res.put("message", "Voting is temporarily closed.");
+            return res;
+        }
+        VerifiedInfo info = tokenStorage.get(token);
+        if (info == null || isTokenExpired(info)) {
+            res.put("status", "error");
+            res.put("message", "Invalid or expired token");
+            return res;
+        }
+        if (votedEmails.contains(info.email)) {
+            res.put("status", "error");
+            res.put("message", "You have already voted.");
+            return res;
+        }
+        if (!"POKEMON".equals(candidate) && !"DORAEMON".equals(candidate)) {
+            res.put("status", "error");
+            res.put("message", "Invalid candidate");
+            return res;
+        }
+        votes.merge(candidate, 1, Integer::sum);
+        votedEmails.add(info.email);
+        res.put("status", "ok");
+        res.put("message", "Vote counted for " + candidate);
+        return res;
+    }
+
+    @PostMapping("/send-admin-otp")
+    public Map<String, Object> sendAdminOtp() {
+        Map<String, Object> res = new HashMap<>();
+        String otp = generateOtp();
+        try {
+            for (String adminEmail : ADMIN_EMAILS) {
+                otpStorage.put(adminEmail, otp);
+                sendEmail(adminEmail, "Admin OTP for Results",
+                        "<p>Your Admin OTP for viewing results is <b>" + otp + "</b></p>");
+            }
+            res.put("status", "ok");
+            res.put("message", "Admin OTP sent");
+        } catch (Exception ex) {
+            res.put("status", "error");
+            res.put("message", "Failed to send admin OTP: " + ex.getMessage());
+        }
+        return res;
+    }
+
+    @GetMapping("/results")
+    public Map<String, Object> results(@RequestParam String token) {
+        Map<String, Object> res = new HashMap<>();
+        VerifiedInfo info = tokenStorage.get(token);
+        if (info == null || isTokenExpired(info) || !info.isAdmin) {
+            res.put("status", "error");
+            res.put("message", "Only admin can view results");
+            return res;
+        }
+        int p = votes.getOrDefault("POKEMON", 0);
+        int d = votes.getOrDefault("DORAEMON", 0);
+        int total = p + d;
+        String winner = p > d ? "POKEMON" : (d > p ? "DORAEMON" : "Tie");
+        res.put("status", "ok");
+        res.put("POKEMON", p);
+        res.put("DORAEMON", d);
+        res.put("total", total);
+        res.put("winner", winner);
+        res.put("votingOpen", votingOpen);
+        return res;
+    }
+
     @PostMapping("/start-voting")
     public Map<String, Object> startVoting(@RequestParam String token) {
         Map<String, Object> res = new HashMap<>();
@@ -146,11 +210,10 @@ public class OtpVerificationApp {
         }
         votingOpen = true;
         res.put("status", "ok");
-        res.put("message", "Voting has started!");
+        res.put("message", "Voting started.");
         return res;
     }
 
-    // ✅ Admin-only: Stop Voting
     @PostMapping("/stop-voting")
     public Map<String, Object> stopVoting(@RequestParam String token) {
         Map<String, Object> res = new HashMap<>();
@@ -162,90 +225,21 @@ public class OtpVerificationApp {
         }
         votingOpen = false;
         res.put("status", "ok");
-        res.put("message", "Voting has ended. Results are final.");
+        res.put("message", "Voting stopped.");
         return res;
     }
 
-    // ✅ Anyone can check status
-    @GetMapping("/status")
-    public Map<String, Object> status() {
-        return Map.of("status", "ok", "votingOpen", votingOpen);
+    private boolean isTokenExpired(VerifiedInfo info) {
+        return (Instant.now().getEpochSecond() - info.issuedAt) > TOKEN_EXPIRY;
     }
 
-    // ✅ Vote endpoint
-    @PostMapping("/vote")
-    public Map<String, Object> vote(@RequestParam String token, @RequestParam String candidate) {
-        Map<String, Object> res = new HashMap<>();
-        VerifiedInfo info = tokenStorage.get(token);
-        if (info == null || isTokenExpired(info)) {
-            res.put("status", "error");
-            res.put("message", "Invalid or expired token.");
-            return res;
-        }
-
-        if (!votingOpen) {
-            res.put("status", "error");
-            res.put("message", "Voting is currently closed.");
-            return res;
-        }
-
-        if (votedEmails.contains(info.email)) {
-            res.put("status", "error");
-            res.put("message", "You have already voted.");
-            return res;
-        }
-
-        if (!"POKEMON".equals(candidate) && !"DORAEMON".equals(candidate)) {
-            res.put("status", "error");
-            res.put("message", "Invalid candidate.");
-            return res;
-        }
-
-        votes.merge(candidate, 1, Integer::sum);
-        votedEmails.add(info.email);
-        res.put("status", "ok");
-        res.put("message", "Vote recorded for " + candidate);
-        return res;
-    }
-
-    // ✅ Admin-only results
-    @GetMapping("/results")
-    public Map<String, Object> results(@RequestParam String token) {
-        Map<String, Object> res = new HashMap<>();
-        VerifiedInfo info = tokenStorage.get(token);
-        if (info == null || isTokenExpired(info) || !info.isAdmin) {
-            res.put("status", "error");
-            res.put("message", "Only admin can view results.");
-            return res;
-        }
-
-        int p = votes.getOrDefault("POKEMON", 0);
-        int d = votes.getOrDefault("DORAEMON", 0);
-        int total = p + d;
-        double pp = total == 0 ? 0 : (p * 100.0 / total);
-        double dp = total == 0 ? 0 : (d * 100.0 / total);
-        String winner = p > d ? "POKEMON" : (d > p ? "DORAEMON" : "Tie");
-
-        res.put("status", "ok");
-        res.put("POKEMON", p);
-        res.put("DORAEMON", d);
-        res.put("total", total);
-        res.put("percentages", Map.of("POKEMON", round(pp, 1), "DORAEMON", round(dp, 1)));
-        res.put("winner", winner);
-        res.put("votingOpen", votingOpen);
-        return res;
-    }
-
-    // ✅ Email Sending via Brevo
     private void sendEmail(String to, String subject, String htmlContent) throws Exception {
         String apiKey = System.getenv("BREVO_API_KEY");
-        if (apiKey == null || apiKey.isEmpty()) {
-            throw new RuntimeException("BREVO_API_KEY not set in environment variables");
-        }
+        if (apiKey == null || apiKey.isEmpty()) throw new RuntimeException("BREVO_API_KEY not set");
 
         String jsonBody = String.format("""
         {
-          "sender": {"name": "Cartoon Voting", "email": "onetimeautheticator@gmail.com"},
+          "sender": {"name": "Cartoon Voting", "email": "no-reply@cartoonvoting.com"},
           "to": [{"email": "%s"}],
           "subject": "%s",
           "htmlContent": "%s"
@@ -260,21 +254,10 @@ public class OtpVerificationApp {
                 .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                 .build();
 
-        HttpResponse<String> response = HttpClient.newHttpClient()
-                .send(request, HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() != 200 && response.statusCode() != 201) {
+        HttpResponse<String> response =
+                HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 201 && response.statusCode() != 200)
             throw new RuntimeException("Failed to send email: " + response.body());
-        }
-    }
-
-    private boolean isTokenExpired(VerifiedInfo info) {
-        return Instant.now().getEpochSecond() - info.issuedAt > TOKEN_EXPIRY;
-    }
-
-    private static double round(double v, int places) {
-        double factor = Math.pow(10, places);
-        return Math.round(v * factor) / factor;
     }
 
     private static class VerifiedInfo {

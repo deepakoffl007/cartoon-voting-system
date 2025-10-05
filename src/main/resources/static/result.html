@@ -1,133 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Voting Results</title>
 <link rel="icon" href="result.jpg">
 <style>
-  body {
-    font-family: Arial, sans-serif;
-    background: linear-gradient(135deg, #89f7fe, #66a6ff);
-    margin: 0;
-    padding: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-  }
-  .container {
-    background: #fff;
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-    width: 420px;
-    text-align: center;
-  }
-  h2 { margin-bottom: 20px; }
-  button {
-    margin: 5px;
-    padding: 10px 16px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    color: white;
-    font-size: 14px;
-  }
-  #startBtn { background-color: #28a745; }
-  #stopBtn { background-color: #dc3545; }
-  #refreshBtn { background-color: #007bff; }
-  #chart { margin-top: 25px; }
-  .muted { color: #555; font-size: 14px; margin-top: 10px; }
+  body { font-family: Inter; background: #eef2f3; text-align: center; padding: 40px; }
+  .card { background: white; display:inline-block; padding: 20px 40px; border-radius: 12px; box-shadow:0 6px 20px rgba(0,0,0,0.1); }
+  button { margin: 10px; padding:10px 20px; border:none; border-radius:8px; cursor:pointer; color:white; }
+  #startBtn { background:#27ae60; } #stopBtn { background:#c0392b; }
 </style>
 </head>
 <body>
-  <div class="container">
-    <h2>Admin Control Panel</h2>
-    <div>
-      <button id="startBtn" onclick="startVoting()">Start Voting</button>
-      <button id="stopBtn" onclick="stopVoting()">Stop Voting</button>
-      <button id="refreshBtn" onclick="fetchResults()">View Results</button>
-    </div>
-    <div id="info" class="muted"></div>
-    <canvas id="chart" width="360" height="240"></canvas>
+  <div class="card">
+    <h2>Voting Results</h2>
+    <div id="results"></div>
+    <button id="startBtn" onclick="startVoting()">Start Voting</button>
+    <button id="stopBtn" onclick="stopVoting()">Stop Voting</button>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script>
-    const backend = "https://cartoon-voting-system.onrender.com";
-    const token = localStorage.getItem("token");
+<script>
+const backend = "https://cartoon-voting-system.onrender.com";
+const token = localStorage.getItem('token');
 
-    const info = document.getElementById("info");
-    const ctx = document.getElementById("chart").getContext("2d");
-    let chart;
+async function loadResults(){
+  const res = await fetch(`${backend}/auth/results?token=${token}`);
+  const data = await res.json();
+  if(data.status==="ok"){
+    document.getElementById('results').innerHTML = `
+      <p><b>POKEMON:</b> ${data.POKEMON} votes<br>
+      <b>DORAEMON:</b> ${data.DORAEMON} votes<br>
+      <b>Total:</b> ${data.total}<br>
+      <b>Winner:</b> ${data.winner}</p>
+      <p><b>Voting Open:</b> ${data.votingOpen}</p>`;
+  } else {
+    document.getElementById('results').innerText = data.message;
+  }
+}
 
-    async function startVoting() {
-      try {
-        const res = await fetch(`${backend}/auth/start-voting?token=${encodeURIComponent(token)}`, { method: "POST" });
-        const data = await res.json();
-        info.textContent = data.message;
-        info.style.color = data.status === "ok" ? "green" : "red";
-      } catch (e) {
-        info.textContent = "Error: " + e.message;
-        info.style.color = "red";
-      }
-    }
+async function startVoting(){
+  const res = await fetch(`${backend}/auth/start-voting?token=${token}`, {method:"POST"});
+  const data = await res.json();
+  alert(data.message); loadResults();
+}
 
-    async function stopVoting() {
-      try {
-        const res = await fetch(`${backend}/auth/stop-voting?token=${encodeURIComponent(token)}`, { method: "POST" });
-        const data = await res.json();
-        info.textContent = data.message;
-        info.style.color = data.status === "ok" ? "red" : "red";
-      } catch (e) {
-        info.textContent = "Error: " + e.message;
-        info.style.color = "red";
-      }
-    }
+async function stopVoting(){
+  const res = await fetch(`${backend}/auth/stop-voting?token=${token}`, {method:"POST"});
+  const data = await res.json();
+  alert(data.message); loadResults();
+}
 
-    async function fetchResults() {
-      try {
-        const res = await fetch(`${backend}/auth/results?token=${encodeURIComponent(token)}`);
-        const data = await res.json();
-        if (data.status !== "ok") {
-          info.textContent = data.message;
-          info.style.color = "red";
-          return;
-        }
-        const p = data.POKEMON;
-        const d = data.DORAEMON;
-        const winner = data.winner;
-
-        if (chart) chart.destroy();
-        chart = new Chart(ctx, {
-          type: "pie",
-          data: {
-            labels: ["POKEMON", "DORAEMON"],
-            datasets: [{
-              data: [p, d],
-              backgroundColor: ["#ffcb05", "#00aaff"],
-            }]
-          },
-          options: {
-            plugins: {
-              title: {
-                display: true,
-                text: `Winner: ${winner}`,
-                color: "#333",
-                font: { size: 16 }
-              }
-            }
-          }
-        });
-      } catch (e) {
-        info.textContent = "Error: " + e.message;
-        info.style.color = "red";
-      }
-    }
-
-    // Load results on page open
-    fetchResults();
-  </script>
+loadResults();
+</script>
 </body>
 </html>
