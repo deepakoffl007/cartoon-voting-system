@@ -247,7 +247,7 @@ public class OtpVerificationApp {
 
         String jsonBody = String.format("""
         {
-          "sender": {"name": "Cartoon Voting", "email": "no-reply@cartoonvoting.com"},
+          "sender": {"name": "Cartoon Voting", "email": "onetimeautheticator@gmail.com"},
           "to": [{"email": "%s"}],
           "subject": "%s",
           "htmlContent": "%s"
