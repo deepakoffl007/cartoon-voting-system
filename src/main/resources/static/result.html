@@ -1,163 +1,133 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Voting Results</title>
-  <link rel="icon" href="result.jpg">
-  <style>
-    body {
-      font-family: Inter, Arial;
-      background: linear-gradient(135deg, #00c6ff, #0072ff);
-      color: #333;
-      margin: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-    }
-    .card {
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-      padding: 32px;
-      width: 380px;
-      text-align: center;
-    }
-    h2 { margin-bottom: 12px; color: #0072ff; }
-    .bar-container {
-      width: 100%;
-      background-color: #f1f1f1;
-      border-radius: 25px;
-      margin: 16px 0;
-      overflow: hidden;
-    }
-    .bar {
-      height: 25px;
-      border-radius: 25px;
-      text-align: right;
-      color: white;
-      line-height: 25px;
-      padding-right: 10px;
-      transition: width 0.8s ease-in-out;
-    }
-    .pokemon { background-color: #ffcc00; color: #000; }
-    .doraemon { background-color: #2196F3; }
-    .winner {
-      font-size: 18px;
-      margin-top: 20px;
-      font-weight: bold;
-      color: green;
-    }
-    button {
-      margin-top: 20px;
-      background: #0072ff;
-      color: white;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 15px;
-    }
-    button:hover { background: #005fcc; }
-    #refresh {
-      margin-top: 10px;
-      background: #28a745;
-    }
-    #refresh:hover { background: #218838; }
-    #timer {
-      font-size: 13px;
-      color: #444;
-      margin-top: 5px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voting Results</title>
+<link rel="icon" href="result.jpg">
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #89f7fe, #66a6ff);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+  }
+  .container {
+    background: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    width: 420px;
+    text-align: center;
+  }
+  h2 { margin-bottom: 20px; }
+  button {
+    margin: 5px;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: white;
+    font-size: 14px;
+  }
+  #startBtn { background-color: #28a745; }
+  #stopBtn { background-color: #dc3545; }
+  #refreshBtn { background-color: #007bff; }
+  #chart { margin-top: 25px; }
+  .muted { color: #555; font-size: 14px; margin-top: 10px; }
+</style>
 </head>
 <body>
-  <div class="card">
-    <h2>📊 Election Results</h2>
-    <p id="summary">Loading results...</p>
-
+  <div class="container">
+    <h2>Admin Control Panel</h2>
     <div>
-      <p><b>POKEMON</b></p>
-      <div class="bar-container">
-        <div id="pokemonBar" class="bar pokemon" style="width:0%">0%</div>
-      </div>
-
-      <p><b>DORAEMON</b></p>
-      <div class="bar-container">
-        <div id="doraemonBar" class="bar doraemon" style="width:0%">0%</div>
-      </div>
+      <button id="startBtn" onclick="startVoting()">Start Voting</button>
+      <button id="stopBtn" onclick="stopVoting()">Stop Voting</button>
+      <button id="refreshBtn" onclick="fetchResults()">View Results</button>
     </div>
-
-    <div class="winner" id="winner"></div>
-    <button onclick="logout()">Logout</button>
-    <button id="refresh" onclick="manualRefresh()">🔄 Refresh Now</button>
-    <div id="timer"></div>
+    <div id="info" class="muted"></div>
+    <canvas id="chart" width="360" height="240"></canvas>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    const backendBase = "https://cartoon-voting-system.onrender.com";
-    let countdown = 30;
-    let intervalId;
+    const backend = "https://cartoon-voting-system.onrender.com";
+    const token = localStorage.getItem("token");
 
-    async function loadResults() {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        alert('You must log in as admin.');
-        location.href = 'index.html';
-        return;
-      }
+    const info = document.getElementById("info");
+    const ctx = document.getElementById("chart").getContext("2d");
+    let chart;
 
+    async function startVoting() {
       try {
-        const res = await fetch(`${backendBase}/auth/results?token=${encodeURIComponent(token)}`);
+        const res = await fetch(`${backend}/auth/start-voting?token=${encodeURIComponent(token)}`, { method: "POST" });
         const data = await res.json();
+        info.textContent = data.message;
+        info.style.color = data.status === "ok" ? "green" : "red";
+      } catch (e) {
+        info.textContent = "Error: " + e.message;
+        info.style.color = "red";
+      }
+    }
 
-        if (data.status !== 'ok') {
-          document.getElementById('summary').innerText = data.message;
+    async function stopVoting() {
+      try {
+        const res = await fetch(`${backend}/auth/stop-voting?token=${encodeURIComponent(token)}`, { method: "POST" });
+        const data = await res.json();
+        info.textContent = data.message;
+        info.style.color = data.status === "ok" ? "red" : "red";
+      } catch (e) {
+        info.textContent = "Error: " + e.message;
+        info.style.color = "red";
+      }
+    }
+
+    async function fetchResults() {
+      try {
+        const res = await fetch(`${backend}/auth/results?token=${encodeURIComponent(token)}`);
+        const data = await res.json();
+        if (data.status !== "ok") {
+          info.textContent = data.message;
+          info.style.color = "red";
           return;
         }
+        const p = data.POKEMON;
+        const d = data.DORAEMON;
+        const winner = data.winner;
 
-        document.getElementById('summary').innerText =
-          `Total Votes: ${data.total} (Pokémon: ${data.POKEMON}, Doraemon: ${data.DORAEMON})`;
-
-        const pokemonPercent = data.percentages.POKEMON;
-        const doraemonPercent = data.percentages.DORAEMON;
-
-        document.getElementById('pokemonBar').style.width = pokemonPercent + '%';
-        document.getElementById('pokemonBar').innerText = pokemonPercent + '%';
-        document.getElementById('doraemonBar').style.width = doraemonPercent + '%';
-        document.getElementById('doraemonBar').innerText = doraemonPercent + '%';
-
-        document.getElementById('winner').innerText = `🏆 Winner: ${data.winner}`;
+        if (chart) chart.destroy();
+        chart = new Chart(ctx, {
+          type: "pie",
+          data: {
+            labels: ["POKEMON", "DORAEMON"],
+            datasets: [{
+              data: [p, d],
+              backgroundColor: ["#ffcb05", "#00aaff"],
+            }]
+          },
+          options: {
+            plugins: {
+              title: {
+                display: true,
+                text: `Winner: ${winner}`,
+                color: "#333",
+                font: { size: 16 }
+              }
+            }
+          }
+        });
       } catch (e) {
-        document.getElementById('summary').innerText = 'Error: ' + e.message;
+        info.textContent = "Error: " + e.message;
+        info.style.color = "red";
       }
     }
 
-    function logout() {
-      localStorage.removeItem('token');
-      localStorage.removeItem('isAdmin');
-      location.href = 'index.html';
-    }
-
-    function manualRefresh() {
-      countdown = 30;
-      loadResults();
-    }
-
-    function startAutoRefresh() {
-      loadResults();
-      intervalId = setInterval(() => {
-        countdown--;
-        document.getElementById('timer').innerText = `Auto-refresh in ${countdown}s`;
-        if (countdown <= 0) {
-          countdown = 30;
-          loadResults();
-        }
-      }, 1000);
-    }
-
-    document.addEventListener('DOMContentLoaded', startAutoRefresh);
+    // Load results on page open
+    fetchResults();
   </script>
 </body>
 </html>
