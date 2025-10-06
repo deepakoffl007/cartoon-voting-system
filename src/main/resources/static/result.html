@@ -1,163 +1,318 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Voting Results</title>
-  <link rel="icon" href="result.jpg">
-  <style>
-    body {
-      font-family: Inter, Arial;
-      background: linear-gradient(135deg, #00c6ff, #0072ff);
-      color: #333;
-      margin: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-    }
-    .card {
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-      padding: 32px;
-      width: 380px;
-      text-align: center;
-    }
-    h2 { margin-bottom: 12px; color: #0072ff; }
-    .bar-container {
-      width: 100%;
-      background-color: #f1f1f1;
-      border-radius: 25px;
-      margin: 16px 0;
-      overflow: hidden;
-    }
-    .bar {
-      height: 25px;
-      border-radius: 25px;
-      text-align: right;
-      color: white;
-      line-height: 25px;
-      padding-right: 10px;
-      transition: width 0.8s ease-in-out;
-    }
-    .pokemon { background-color: #ffcc00; color: #000; }
-    .doraemon { background-color: #2196F3; }
-    .winner {
-      font-size: 18px;
-      margin-top: 20px;
-      font-weight: bold;
-      color: green;
-    }
-    button {
-      margin-top: 20px;
-      background: #0072ff;
-      color: white;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 15px;
-    }
-    button:hover { background: #005fcc; }
-    #refresh {
-      margin-top: 10px;
-      background: #28a745;
-    }
-    #refresh:hover { background: #218838; }
-    #timer {
-      font-size: 13px;
-      color: #444;
-      margin-top: 5px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Election Results</title>
+    <link rel="icon" href="result.jpg">
+
+    <style>
+        body {
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .results-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .header p {
+            margin: 10px 0 0 0;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .candidates-section {
+            padding: 40px;
+        }
+
+        .candidates-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .candidate-card {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            transition: transform 0.3s ease;
+            border: 3px solid transparent;
+        }
+
+        .candidate-card:hover { transform: translateY(-5px); }
+
+        .candidate-card.leading {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-color: #f59e0b;
+        }
+
+        .leading-badge {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #f59e0b;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+
+        .candidate-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e0 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            border: 4px solid white;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .candidate-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .candidate-name {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin: 0 0 10px 0;
+        }
+
+        .vote-percentage {
+            font-size: 3rem;
+            font-weight: 800;
+            margin: 20px 0;
+        }
+
+        .candidate-card:nth-child(1) .vote-percentage { color: #3b82f6; }
+        .candidate-card:nth-child(2) .vote-percentage { color: #ef4444; }
+
+        .vote-count {
+            font-size: 1.1rem;
+            color: #6b7280;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: #e5e7eb;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 1s ease-out;
+        }
+
+        .candidate-card:nth-child(1) .progress-fill {
+            background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%);
+        }
+
+        .candidate-card:nth-child(2) .progress-fill {
+            background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .winner-section {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .winner-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0 0 30px 0;
+        }
+
+        .winner-card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .winner-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            border: 3px solid rgba(255,255,255,0.3);
+            overflow: hidden;
+        }
+
+        .winner-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .winner-name { font-size: 1.8rem; font-weight: 700; }
+        .winner-details { font-size: 1.1rem; opacity: 0.9; }
+
+        button {
+            margin: 20px auto;
+            display: block;
+            background: #333;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover { background: #111; }
+    </style>
 </head>
 <body>
-  <div class="card">
-    <h2>📊 Election Results</h2>
-    <p id="summary">Loading results...</p>
+    <div class="results-container">
+        <div class="header">
+            <h1>🗳️ Election Results For Most Favorite Cartoon</h1>
+            <p id="reporting">Live results • Updated just now</p>
+        </div>
 
-    <div>
-      <p><b>POKEMON</b></p>
-      <div class="bar-container">
-        <div id="pokemonBar" class="bar pokemon" style="width:0%">0%</div>
-      </div>
+        <div class="candidates-section">
+            <div class="candidates-grid">
+                <div class="candidate-card" id="pokemonCard">
+                    <div class="candidate-avatar"><img src="pokemon.jpeg" alt="POKEMON"></div>
+                    <h2 class="candidate-name">POKEMON</h2>
+                    <div class="vote-percentage" id="pokemonPercent">0%</div>
+                    <div class="vote-count" id="pokemonCount">0 votes</div>
+                    <div class="progress-bar"><div class="progress-fill" id="pokemonFill" style="width:0%"></div></div>
+                </div>
 
-      <p><b>DORAEMON</b></p>
-      <div class="bar-container">
-        <div id="doraemonBar" class="bar doraemon" style="width:0%">0%</div>
-      </div>
+                <div class="candidate-card" id="doraemonCard">
+                    <div class="candidate-avatar"><img src="doreamon.jpeg" alt="DORAEMON"></div>
+                    <h2 class="candidate-name">DORAEMON</h2>
+                    <div class="vote-percentage" id="doraemonPercent">0%</div>
+                    <div class="vote-count" id="doraemonCount">0 votes</div>
+                    <div class="progress-bar"><div class="progress-fill" id="doraemonFill" style="width:0%"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="winner-section">
+            <h2 class="winner-title">🎉 Projected Winner</h2>
+            <div class="winner-card">
+                <div class="winner-avatar"><img id="winnerImg" src="pokemon.jpeg" alt="winner"></div>
+                <h3 class="winner-name" id="winnerName">—</h3>
+                <p class="winner-details" id="winnerDetails">—</p>
+            </div>
+        </div>
+
+        <button onclick="logout()">Logout</button>
     </div>
 
-    <div class="winner" id="winner"></div>
-    <button onclick="logout()">Logout</button>
-    <button id="refresh" onclick="manualRefresh()">🔄 Refresh Now</button>
-    <div id="timer"></div>
-  </div>
+    <script>
+        const backendBase = "https://cartoon-voting-system.onrender.com";
 
-  <script>
-    const backendBase = "https://cartoon-voting-system.onrender.com";
-    let countdown = 30;
-    let intervalId;
+        async function loadResults() {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                alert("You must log in as admin first.");
+                location.href = "index.html";
+                return;
+            }
 
-    async function loadResults() {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        alert('You must log in as admin.');
-        location.href = 'index.html';
-        return;
-      }
+            try {
+                const res = await fetch(`${backendBase}/auth/results?token=${encodeURIComponent(token)}`);
+                const data = await res.json();
+                if (data.status !== "ok") {
+                    alert(data.message || "Unauthorized access.");
+                    location.href = "index.html";
+                    return;
+                }
 
-      try {
-        const res = await fetch(`${backendBase}/auth/results?token=${encodeURIComponent(token)}`);
-        const data = await res.json();
+                const pVotes = data.POKEMON || 0;
+                const dVotes = data.DORAEMON || 0;
+                const pPercent = data.percentages.POKEMON || 0;
+                const dPercent = data.percentages.DORAEMON || 0;
 
-        if (data.status !== 'ok') {
-          document.getElementById('summary').innerText = data.message;
-          return;
+                document.getElementById("pokemonCount").textContent = `${pVotes} votes`;
+                document.getElementById("doraemonCount").textContent = `${dVotes} votes`;
+                document.getElementById("pokemonPercent").textContent = `${pPercent}%`;
+                document.getElementById("doraemonPercent").textContent = `${dPercent}%`;
+                document.getElementById("pokemonFill").style.width = `${pPercent}%`;
+                document.getElementById("doraemonFill").style.width = `${dPercent}%`;
+
+                const winner = data.winner || "Tie";
+                const winnerImg = document.getElementById("winnerImg");
+                const winnerName = document.getElementById("winnerName");
+                const winnerDetails = document.getElementById("winnerDetails");
+
+                if (winner === "POKEMON") {
+                    winnerName.textContent = "POKEMON";
+                    winnerImg.src = "pokemon.jpeg";
+                    winnerDetails.textContent = `Leading by ${Math.abs(pVotes - dVotes)} votes`;
+                } else if (winner === "DORAEMON") {
+                    winnerName.textContent = "DORAEMON";
+                    winnerImg.src = "doreamon.jpeg";
+                    winnerDetails.textContent = `Leading by ${Math.abs(dVotes - pVotes)} votes`;
+                } else {
+                    winnerName.textContent = "Tie";
+                    winnerDetails.textContent = "No clear winner yet";
+                }
+
+            } catch (err) {
+                console.error("Error loading results:", err);
+                alert("Error fetching results.");
+            }
         }
 
-        document.getElementById('summary').innerText =
-          `Total Votes: ${data.total} (Pokémon: ${data.POKEMON}, Doraemon: ${data.DORAEMON})`;
-
-        const pokemonPercent = data.percentages.POKEMON;
-        const doraemonPercent = data.percentages.DORAEMON;
-
-        document.getElementById('pokemonBar').style.width = pokemonPercent + '%';
-        document.getElementById('pokemonBar').innerText = pokemonPercent + '%';
-        document.getElementById('doraemonBar').style.width = doraemonPercent + '%';
-        document.getElementById('doraemonBar').innerText = doraemonPercent + '%';
-
-        document.getElementById('winner').innerText = `🏆 Winner: ${data.winner}`;
-      } catch (e) {
-        document.getElementById('summary').innerText = 'Error: ' + e.message;
-      }
-    }
-
-    function logout() {
-      localStorage.removeItem('token');
-      localStorage.removeItem('isAdmin');
-      location.href = 'index.html';
-    }
-
-    function manualRefresh() {
-      countdown = 30;
-      loadResults();
-    }
-
-    function startAutoRefresh() {
-      loadResults();
-      intervalId = setInterval(() => {
-        countdown--;
-        document.getElementById('timer').innerText = `Auto-refresh in ${countdown}s`;
-        if (countdown <= 0) {
-          countdown = 30;
-          loadResults();
+        function logout() {
+            localStorage.clear();
+            location.href = "index.html";
         }
-      }, 1000);
-    }
 
-    document.addEventListener('DOMContentLoaded', startAutoRefresh);
-  </script>
+        window.addEventListener("load", loadResults);
+    </script>
 </body>
 </html>
