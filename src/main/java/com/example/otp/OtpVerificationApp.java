@@ -1,6 +1,5 @@
 package com.example.otp;
 
-import java.io.FileInputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -15,11 +14,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,10 +35,10 @@ public class OtpVerificationApp {
 
     // ✅ Admin emails
     private static final List<String> ADMIN_EMAILS = Arrays.asList(
-            "de0049@srmist.edu.in",
-            "aa0021@srmist.edu.in",
-            "ls9964@srmist.edu.in",
-            "hm1023@srmist.edu.in"
+        "de0049@srmist.edu.in",
+        "aa0021@srmist.edu.in",
+        "ls9964@srmist.edu.in",
+        "hm1023@srmist.edu.in"
     );
 
     private final long TOKEN_EXPIRY = 10 * 60; // seconds
@@ -59,21 +53,28 @@ public class OtpVerificationApp {
         votes.putIfAbsent("DORAEMON", 0);
     }
 
+    // ✅ Hardcoded allowed emails
     private void loadAllowedEmails() {
-        try (FileInputStream fis = new FileInputStream("allowed_emails.xlsx");
-             Workbook workbook = new XSSFWorkbook(fis)) {
-            Sheet sheet = workbook.getSheetAt(0);
-            for (Row row : sheet) {
-                Cell cell = row.getCell(0);
-                if (cell != null) {
-                    String email = cell.getStringCellValue().trim();
-                    if (!email.isEmpty()) allowedEmails.add(email);
-                }
-            }
-            System.out.println("✅ Loaded allowed emails: " + allowedEmails.size());
-        } catch (Exception e) {
-            System.out.println("⚠️ Could not load allowed_emails.xlsx: " + e.getMessage());
-        }
+        List<String> emails = Arrays.asList(
+            "nt4924@srmist.edu.in","ts5947@srmist.edu.in","bp3555@srmist.edu.in","bb4137@srmist.edu.in",
+            "ak3655@srmist.edu.in","sv2309@srmist.edu.in","td4145@srmist.edu.in","hj7702@srmist.edu.in",
+            "hs5385@srmist.edu.in","ls5324@srmist.edu.in","hn9608@srmist.edu.in","mr2228@srmist.edu.in",
+            "ss0201@srmist.edu.in","jr9518@srmist.edu.in","sm0754@srmist.edu.in","jk5453@srmist.edu.in",
+            "ar3156@srmist.edu.in","br6473@srmist.edu.in","vp7571@srmist.edu.in","ja0974@srmist.edu.in",
+            "ss0742@srmist.edu.in","ah8334@srmist.edu.in","as5036@srmist.edu.in","sa1082@srmist.edu.in",
+            "lk0168@srmist.edu.in","aa6792@srmist.edu.in","er0908@srmist.edu.in","ar3365@srmist.edu.in",
+            "ds9601@srmist.edu.in","js3129@srmist.edu.in","ls9964@srmist.edu.in","sk0121@srmist.edu.in",
+            "si0676@srmist.edu.in","pk6003@srmist.edu.in","ap8236@srmist.edu.in","pg7710@srmist.edu.in",
+            "sr5861@srmist.edu.in","vj4895@srmist.edu.in","ba8689@srmist.edu.in","aa0021@srmist.edu.in",
+            "ng7253@srmist.edu.in","mg9780@srmist.edu.in","tg8109@srmist.edu.in","ga0783@srmist.edu.in",
+            "jp6684@srmist.edu.in","hg8771@srmist.edu.in","vk9901@srmist.edu.in","jc9099@srmist.edu.in",
+            "na7036@srmist.edu.in","ss5513@srmist.edu.in","yk5611@srmist.edu.in","bj0162@srmist.edu.in",
+            "kk5743@srmist.edu.in","hm1023@srmist.edu.in","ps6374@srmist.edu.in","aa1781@srmist.edu.in",
+            "ps6195@srmist.edu.in","rm3661@srmist.edu.in","Kk6453@srmist.edu.in","de0049@srmist.edu.in",
+            "naveenp1@srmist.edu.in","sakthits@srmist.edu.in"
+        );
+        allowedEmails.addAll(emails);
+        System.out.println("✅ Loaded allowed emails: " + allowedEmails.size());
     }
 
     private String generateOtp() {
@@ -81,10 +82,16 @@ public class OtpVerificationApp {
         return String.valueOf(n);
     }
 
-    // ✅ Send OTP for login (students/admin)
+    // ✅ Send OTP for login
     @PostMapping("/send-otp")
     public Map<String, Object> sendOtp(@RequestParam String email) {
         Map<String, Object> res = new HashMap<>();
+
+        // Automatically append @srmist.edu.in if not present
+        if (!email.contains("@")) {
+            email = email + "@srmist.edu.in";
+        }
+
         try {
             if (votedEmails.contains(email) && !ADMIN_EMAILS.contains(email)) {
                 res.put("status", "error");
@@ -101,7 +108,6 @@ public class OtpVerificationApp {
             otpStorage.put(email, otp);
 
             sendEmail(email, "OTP for Voting", "<p>Your OTP for CR Voting is <b>" + otp + "</b> (valid 10 minutes)</p>");
-
             res.put("status", "ok");
             res.put("message", "OTP sent to " + email);
         } catch (Exception ex) {
@@ -111,10 +117,15 @@ public class OtpVerificationApp {
         return res;
     }
 
-    // ✅ Verify OTP and return token
+    // ✅ Verify OTP
     @PostMapping("/verify-otp")
     public Map<String, Object> verifyOtp(@RequestParam String email, @RequestParam String otp) {
         Map<String, Object> res = new HashMap<>();
+
+        if (!email.contains("@")) {
+            email = email + "@srmist.edu.in";
+        }
+
         String stored = otpStorage.get(email);
         if (stored != null && stored.equals(otp)) {
             otpStorage.remove(email);
@@ -131,11 +142,12 @@ public class OtpVerificationApp {
         return res;
     }
 
-    // ✅ Vote endpoint
+    // ✅ Vote
     @PostMapping("/vote")
     public Map<String, Object> vote(@RequestParam String token, @RequestParam String candidate) {
         Map<String, Object> res = new HashMap<>();
         VerifiedInfo info = tokenStorage.get(token);
+
         if (info == null || isTokenExpired(info)) {
             res.put("status", "error");
             res.put("message", "Invalid or expired token");
@@ -156,13 +168,12 @@ public class OtpVerificationApp {
 
         votes.merge(candidate, 1, Integer::sum);
         votedEmails.add(info.email);
-
         res.put("status", "ok");
         res.put("message", "Vote counted for " + candidate);
         return res;
     }
 
-    // ✅ Send same OTP to all admins
+    // ✅ Admin OTP for results
     @PostMapping("/send-admin-otp")
     public Map<String, Object> sendAdminOtp() {
         Map<String, Object> res = new HashMap<>();
@@ -182,7 +193,7 @@ public class OtpVerificationApp {
         return res;
     }
 
-    // ✅ View Results - Only admin tokens allowed
+    // ✅ Results
     @GetMapping("/results")
     public Map<String, Object> results(@RequestParam String token) {
         Map<String, Object> res = new HashMap<>();
@@ -204,10 +215,7 @@ public class OtpVerificationApp {
         res.put("POKEMON", p);
         res.put("DORAEMON", d);
         res.put("total", total);
-        Map<String, Object> perc = new HashMap<>();
-        perc.put("POKEMON", round(pp, 1));
-        perc.put("DORAEMON", round(dp, 1));
-        res.put("percentages", perc);
+        res.put("percentages", Map.of("POKEMON", round(pp, 1), "DORAEMON", round(dp, 1)));
         res.put("winner", winner);
         return res;
     }
@@ -238,9 +246,9 @@ public class OtpVerificationApp {
         return Math.round(v * factor) / factor;
     }
 
-    // ✅ Helper method to send emails using Brevo API
+    // ✅ Send email using Brevo
     private void sendEmail(String to, String subject, String htmlContent) throws Exception {
-        String apiKey = System.getenv("BREVO_API_KEY"); // Set in Render env variables
+        String apiKey = System.getenv("BREVO_API_KEY");
         if (apiKey == null || apiKey.isEmpty()) {
             throw new RuntimeException("BREVO_API_KEY not set in environment variables");
         }
@@ -274,6 +282,7 @@ public class OtpVerificationApp {
         public final String email;
         public final boolean isAdmin;
         public final long issuedAt;
+
         public VerifiedInfo(String email, boolean isAdmin, long issuedAt) {
             this.email = email;
             this.isAdmin = isAdmin;
